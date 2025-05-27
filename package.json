@@ -1,0 +1,17 @@
+{
+  "name": "receitas-de-minas",
+  "version": "1.0.0",
+  "description": "Aplicação CRUD de receitas mineiras com JSON Server",
+  "scripts": {
+    "api": "json-server --watch db/db.json --port 3001",
+    "dev": "live-server public --port=3000",
+    "start": "concurrently \"npm run api\" \"npm run dev\""
+  },
+  "dependencies": {
+    "json-server": "^0.17.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "live-server": "^1.2.2"
+  }
+}
