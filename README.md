@@ -6,25 +6,26 @@ Nesta atividade, você irá completar o projeto anterior permitindo cadastrar e 
 
 ## Informações do trabalho
 
-- Nome:
-- Matricula:
-- Proposta de projeto escolhida:
-- Breve descrição sobre seu projeto:
+- Nome:João Gabriel Tavares Pinheiro
+- Matricula:896487
+- Proposta de projeto escolhida:site de receitas
+- Breve descrição sobre seu projeto:projeto bonito e bem elaborado, procurando sempre melhor ele para uma experiencia melhor
 
 **Print do testes da API com Postman ou similar**
 
 <<  COLOQUE A IMAGEM GET AQUI >>
-
+image.png
+image-1.png
 <<  COLOQUE A IMAGEM POST AQUI >>
-
+image-2.png
 <<  COLOQUE A IMAGEM PUT AQUI >>
-
+image-3.png
 <<  COLOQUE A IMAGEM DELETE AQUI >>
-
+image-4.png
 **Print da aba NETWORK com requisições Fetch/XHR de POST**
 
 <<  COLOQUE A IMAGEM AQUI >>
-
+![alt text](image-5.png)
 ## **Orientações Gerais**
 
 Nesse projeto você vai encontrar a seguinte estrutura base:
