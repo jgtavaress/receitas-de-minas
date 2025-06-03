@@ -16,15 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    const receita = {
-      titulo: document.getElementById('titulo').value,
-      descricao: document.getElementById('descricao').value,
-      imagem: document.getElementById('imagem').value,
-      autor: document.getElementById('autor').value,
-      data: document.getElementById('data').value,
-      conteudo: document.getElementById('conteudo').value,
-      dica: document.getElementById('dica').value || null
-    };
+   const receita = {
+  titulo: document.getElementById('titulo').value,
+  descricao: document.getElementById('descricao').value,
+  imagem: document.getElementById('imagem').value,
+  autor: document.getElementById('autor').value,
+  data: document.getElementById('data').value,
+  conteudo: document.getElementById('conteudo').value,
+  dica: document.getElementById('dica').value || null,
+  categoria: document.getElementById('categoria').value,
+  tempoPreparo: parseInt(document.getElementById('tempoPreparo').value) || null
+};
     
     if (id) {
       receita.id = parseInt(id);
@@ -52,6 +54,8 @@ async function carregarReceitaParaEdicao(id) {
     document.getElementById('conteudo').value = receita.conteudo;
     document.getElementById('dica').value = receita.dica || '';
     document.getElementById('receita-id').value = receita.id;
+    document.getElementById('categoria').value = receita.categoria || 'Salgado';
+    document.getElementById('tempoPreparo').value = receita.tempoPreparo || '';
     
   } catch (error) {
     console.error('Erro ao carregar receita:', error);
