@@ -1,3 +1,34 @@
+// Função para criar o navbar dinamicamente
+function criarNavbar() {
+  const navbar = document.querySelector('nav.navbar');
+  if (!navbar) return;
+
+  // Obtém a página atual para destacar o item ativo
+  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  
+  navbar.innerHTML = `
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="index.html">Receitas de Minas</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link ${currentPage === 'index.html' ? 'active' : ''}" href="index.html">Início</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${currentPage === 'cadastro_receita.html' ? 'active' : ''}" href="cadastro_receita.html">Cadastrar Receita</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${currentPage === 'estatisticas.html' ? 'active' : ''}" href="estatisticas.html">Estatísticas</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
 // Configuração da API
 const API_URL = 'http://localhost:3001/receitas';
 
@@ -182,6 +213,9 @@ function configurarBusca() {
 
 // Inicializa as funções corretas com base na página
 document.addEventListener('DOMContentLoaded', function() {
+  // Cria o navbar em todas as páginas
+  criarNavbar();
+
   if (document.getElementById("area-cards")) {
     criarCards();
     criarCarrossel();
