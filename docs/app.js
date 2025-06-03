@@ -30,7 +30,7 @@ function criarNavbar() {
 }
 
 // Configuração da API
-const API_URL = 'db.json';
+const API_URL = 'http://localhost:3001/receitas';
 
 // Obtém o ID da receita a partir da URL
 function obterIdDaUrl() {
@@ -40,15 +40,16 @@ function obterIdDaUrl() {
 
 async function carregarReceitas() {
   try {
-    const resposta = await fetch('db.json');
+    const resposta = await fetch(API_URL);
     if (!resposta.ok) throw new Error('Erro ao carregar receitas');
     const data = await resposta.json();
-    return data.receitas; // Note que estamos retornando data.receitas
+    return data; // <- Corrigido aqui
   } catch (error) {
     console.error('Erro ao carregar receitas:', error);
     return [];
   }
 }
+
 
 // Cria os cards dinamicamente na home
 async function criarCards(filtro = "") {

@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Aplicação CRUD de receitas mineiras com JSON Server",
   "scripts": {
-    "api": "json-server --watch db/db.json --port 3001",
-    "dev": "live-server public --port=3000",
+    "api": "json-server --watch docs/db/db.json --port 3001",
+    "dev": "live-server docs --port=3000",
     "start": "concurrently \"npm run api\" \"npm run dev\""
   },
   "dependencies": {
