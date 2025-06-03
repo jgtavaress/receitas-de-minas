@@ -30,7 +30,7 @@ function criarNavbar() {
 }
 
 // Configuração da API
-const API_URL = 'http://localhost:3001/receitas';
+const API_URL = 'db.json';
 
 // Obtém o ID da receita a partir da URL
 function obterIdDaUrl() {
@@ -38,12 +38,12 @@ function obterIdDaUrl() {
   return parseInt(params.get("id"));
 }
 
-// Carrega as receitas a partir do JSONServer
 async function carregarReceitas() {
   try {
-    const resposta = await fetch(API_URL);
+    const resposta = await fetch('db.json');
     if (!resposta.ok) throw new Error('Erro ao carregar receitas');
-    return await resposta.json();
+    const data = await resposta.json();
+    return data.receitas; // Note que estamos retornando data.receitas
   } catch (error) {
     console.error('Erro ao carregar receitas:', error);
     return [];
