@@ -29,7 +29,7 @@ function criarNavbar() {
 }
 
 // CORRIGIDO: Caminho correto para o db.json
-const DB_PATH = 'docs/db/db.json';
+const DB_PATH = 'db/db.json';
 
 // Carrega todas as receitas
 async function carregarReceitas() {
@@ -42,7 +42,6 @@ async function carregarReceitas() {
     return data.receitas;
   } catch (error) {
     console.error('Erro ao carregar receitas:', error);
-    // Fallback para localStorage
     const localReceitas = localStorage.getItem('receitas');
     if (localReceitas) {
       console.log('Usando receitas do localStorage');
@@ -52,7 +51,7 @@ async function carregarReceitas() {
   }
 }
 
-// Salva receitas no localStorage (simulação)
+// Salva receitas no localStorage
 async function salvarReceitasLocal(receitas) {
   localStorage.setItem('receitas', JSON.stringify(receitas));
   console.log('Receitas salvas no localStorage');
@@ -73,6 +72,12 @@ async function criarCards(filtro = "") {
 
   try {
     const receitas = await carregarReceitas();
+    
+    if (!receitas || receitas.length === 0) {
+      container.innerHTML = '<div class="col-12 text-center py-4"><p>Nenhuma receita encontrada</p></div>';
+      return;
+    }
+    
     const receitasFiltradas = receitas.filter(item =>
       item.titulo.toLowerCase().includes(filtro.toLowerCase())
     );
@@ -93,11 +98,13 @@ async function criarCards(filtro = "") {
       // Ajusta o caminho da imagem
       let imagemPath = item.imagem;
       if (imagemPath && !imagemPath.startsWith('http')) {
-        imagemPath = `docs/db/${imagemPath}`;
+        imagemPath = `db/${imagemPath}`;
       }
+      
+      console.log('Imagem path:', imagemPath); // Para debug
 
       card.innerHTML = `
-        <img src="${imagemPath}" alt="${item.titulo}" class="card-img-top" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200?text=Imagem+Indisponível'">
+        <img src="${imagemPath}" alt="${item.titulo}" class="card-img-top" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200?text=Imagem+Indisponível'; console.error('Imagem não carregou:', '${imagemPath}')">
         <div class="card-body d-flex flex-column">
           <h5 class="card-title">${item.titulo}</h5>
           <p class="card-text flex-grow-1">${item.descricao.substring(0, 100)}${item.descricao.length > 100 ? '...' : ''}</p>
@@ -157,10 +164,9 @@ async function mostrarDetalhesReceita() {
     const receita = receitas.find(r => r.id === id);
 
     if (receita) {
-      // Ajusta o caminho da imagem
       let imagemPath = receita.imagem;
       if (imagemPath && !imagemPath.startsWith('http')) {
-        imagemPath = `docs/db/${imagemPath}`;
+        imagemPath = `db/${imagemPath}`;
       }
 
       container.innerHTML = `
@@ -220,7 +226,7 @@ async function criarCarrossel() {
       
       let imagemPath = item.imagem;
       if (imagemPath && !imagemPath.startsWith('http')) {
-        imagemPath = `docs/db/${imagemPath}`;
+        imagemPath = `db/${imagemPath}`;
       }
       
       const slide = document.createElement("div");
@@ -236,7 +242,6 @@ async function criarCarrossel() {
       container.appendChild(slide);
     });
 
-    // Atualiza os indicadores do carrossel
     const indicatorsContainer = document.getElementById("carousel-indicators");
     if (indicatorsContainer) {
       indicatorsContainer.innerHTML = '';
@@ -250,7 +255,6 @@ async function criarCarrossel() {
       });
     }
 
-    // Inicializa o carrossel
     if (typeof bootstrap !== 'undefined') {
       new bootstrap.Carousel(document.getElementById('carouselReceitas'));
     }
@@ -276,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const currentPath = window.location.pathname;
   
-  if (currentPath.includes('index.html') || currentPath === '/' || currentPath === '/index.html') {
+  if (currentPath.includes('index.html') || currentPath === '/' || currentPath === '/index.html' || currentPath === '') {
     criarCards();
     criarCarrossel();
     configurarBusca();
