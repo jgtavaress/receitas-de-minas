@@ -1,199 +1,378 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Estatísticas das Receitas</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary-color: #ff6f00;
-      --secondary-color: #fff8f0;
-      --dark-color: #4e342e;
-      --light-color: #ffffff;
+// Função para carregar receitas
+async function carregarReceitas() {
+  try {
+    // Caminho correto para o db.json
+    const resposta = await fetch('docs/db/db.json');
+    if (!resposta.ok) throw new Error(`Erro HTTP: ${resposta.status}`);
+    const data = await resposta.json();
+    console.log('Estatísticas: receitas carregadas com sucesso');
+    return data.receitas;
+  } catch (error) {
+    console.error('Erro ao carregar receitas:', error);
+    // Fallback para localStorage
+    const localReceitas = localStorage.getItem('receitas');
+    if (localReceitas) {
+      console.log('Usando receitas do localStorage');
+      return JSON.parse(localReceitas);
     }
-    
-    body {
-      font-family: 'Poppins', sans-serif;
-      background-color: var(--secondary-color);
-      color: var(--dark-color);
-    }
-    
-    .navbar {
-      background-color: var(--primary-color);
-    }
-    
-    .navbar-brand, .nav-link {
-      color: var(--light-color) !important;
-    }
-    
-    .stats-header {
-      background: linear-gradient(135deg, var(--primary-color), #e65100);
-      color: white;
-      padding: 2rem 0;
-      margin-bottom: 2rem;
-      border-radius: 0 0 20px 20px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    .chart-container {
-      background: var(--light-color);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      transition: transform 0.3s ease;
-    }
-    
-    .chart-container:hover {
-      transform: translateY(-5px);
-    }
-    
-    .chart-title {
-      color: var(--primary-color);
-      font-weight: 600;
-      margin-bottom: 1rem;
-      position: relative;
-      padding-bottom: 0.5rem;
-      font-size: 1.25rem;
-    }
-    
-    .chart-title::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 50px;
-      height: 3px;
-      background-color: var(--primary-color);
-    }
-    
-    .chart-wrapper {
-      position: relative;
-      height: 250px;
-      margin: 0 auto;
-      max-width: 800px;
-    }
-    
-    .info-card {
-      background: var(--light-color);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      border-left: 4px solid var(--primary-color);
-    }
-    
-    .info-card h3 {
-      color: var(--primary-color);
-      font-size: 1.2rem;
-    }
-    
-    .info-card p {
-      font-size: 2rem;
-      font-weight: 600;
-      margin: 0;
-    }
-    
-    footer {
-      background-color: var(--dark-color);
-      color: var(--light-color);
-      padding: 2rem 0;
-      margin-top: 3rem;
-    }
+    return [];
+  }
+}
 
-    @media (max-width: 768px) {
-      .chart-wrapper {
-        height: 200px;
-      }
-      
-      .chart-container {
-        padding: 1rem;
-      }
-      
-      .chart-title {
-        font-size: 1.1rem;
-      }
-    }
-  </style>
-</head>
-<body>
-  <nav class="navbar navbar-expand-lg"></nav>
+// Função auxiliar para parsear o tempo de preparo
+function parseTempoPreparo(tempo) {
+  if (typeof tempo === 'number') {
+    return tempo; // Já está em minutos
+  }
   
-  <header class="stats-header text-center">
-    <div class="container">
-      <h1 class="display-4 fw-bold">Estatísticas das Receitas</h1>
-      <p class="lead">Analise os dados das receitas cadastradas</p>
-    </div>
-  </header>
-
-  <div class="container my-5">
-    <div class="row">
-      <!-- Cards de informações -->
-      <div class="col-md-4">
-        <div class="info-card">
-          <h3>Total de Receitas</h3>
-          <p id="total-receitas">0</p>
-        </div>
-      </div>
-      
-      <div class="col-md-4">
-        <div class="info-card">
-          <h3>Receita Mais Recente</h3>
-          <p id="receita-recente">-</p>
-        </div>
-      </div>
-      
-      <div class="col-md-4">
-        <div class="info-card">
-          <h3>Tempo Médio</h3>
-          <p id="tempo-medio">0 min</p>
-        </div>
-      </div>
-    </div>
+  if (typeof tempo === 'string') {
+    // Remove espaços extras
+    tempo = tempo.trim();
     
-    <div class="chart-container">
-      <h2 class="chart-title text-center">
-        <i class="bi bi-pie-chart-fill me-2"></i>
-        Distribuição por Categoria
-      </h2>
-      <div class="chart-wrapper">
-        <canvas id="categoriaChart"></canvas>
-      </div>
-    </div>
-
-    <div class="chart-container">
-      <h2 class="chart-title text-center">
-        <i class="bi bi-bar-chart-fill me-2"></i>
-        Tempo de Preparo
-      </h2>
-      <div class="chart-wrapper">
-        <canvas id="tempoChart"></canvas>
-      </div>
-    </div>
+    // Caso 1: Formato "X horas" ou "Xh"
+    const horasMatch = tempo.match(/(\d+)\s*h(?:oras?)?/i);
+    if (horasMatch) {
+      return parseInt(horasMatch[1]) * 60;
+    }
     
-    <div class="chart-container">
-      <h2 class="chart-title text-center">
-        <i class="bi bi-calendar-heart-fill me-2"></i>
-        Receitas por Data
-      </h2>
-      <div class="chart-wrapper">
-        <canvas id="dataChart"></canvas>
+    // Caso 2: Formato "X horas Y minutos" ou "Xh Ymin"
+    const horasMinutosMatch = tempo.match(/(\d+)\s*h(?:oras?)?\s*(\d+)\s*m(?:in(?:utos?)?)?/i);
+    if (horasMinutosMatch) {
+      return parseInt(horasMinutosMatch[1]) * 60 + parseInt(horasMinutosMatch[2]);
+    }
+    
+    // Caso 3: Apenas números (minutos)
+    const minutosMatch = tempo.match(/(\d+)/);
+    if (minutosMatch) {
+      return parseInt(minutosMatch[1]);
+    }
+  }
+  
+  return null;
+}
+
+// Função para criar o navbar
+function criarNavbar() {
+  const navbar = document.querySelector('nav.navbar');
+  if (!navbar) return;
+
+  const currentPage = window.location.pathname.split('/').pop() || 'estatisticas.html';
+  
+  navbar.innerHTML = `
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="index.html">🍽️ Receitas de Minas</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link ${currentPage === 'index.html' ? 'active' : ''}" href="index.html">Início</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${currentPage === 'cadastro_receita.html' ? 'active' : ''}" href="cadastro_receita.html">Cadastrar Receita</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link ${currentPage === 'estatisticas.html' ? 'active' : ''}" href="estatisticas.html">Estatísticas</a>
+          </li>
+        </ul>
       </div>
     </div>
-  </div>
+  `;
+}
 
-  <footer class="text-center">
-    <div class="container">
-      <p>&copy; 2025 Receitas de Minas. Todos os direitos reservados.</p>
-    </div>
-  </footer>
+document.addEventListener('DOMContentLoaded', async function() {
+  // Cria o navbar
+  criarNavbar();
+  
+  try {
+    // Carrega as receitas
+    const receitas = await carregarReceitas();
+    
+    console.log('Total de receitas carregadas:', receitas.length);
+    
+    // Verifica se há receitas
+    if (receitas.length === 0) {
+      const categoriaContainer = document.getElementById('categoriaChart').parentElement;
+      if (categoriaContainer) {
+        categoriaContainer.innerHTML = 
+          '<div class="alert alert-warning text-center py-4">Nenhuma receita cadastrada para gerar estatísticas.</div>';
+      }
+      const tempoContainer = document.getElementById('tempoChart').parentElement;
+      if (tempoContainer) tempoContainer.innerHTML = '';
+      const dataContainer = document.getElementById('dataChart').parentElement;
+      if (dataContainer) dataContainer.innerHTML = '';
+      return;
+    }
 
-  <script src="app.js"></script>
-  <script src="estatisticas.js"></script>
-</body>
-</html>
+    // Atualiza os cards de informação
+    const totalReceitasEl = document.getElementById('total-receitas');
+    if (totalReceitasEl) totalReceitasEl.textContent = receitas.length;
+    
+    // Encontra a receita mais recente
+    const receitaRecente = receitas.reduce((a, b) => 
+      new Date(a.data) > new Date(b.data) ? a : b
+    );
+    const receitaRecenteEl = document.getElementById('receita-recente');
+    if (receitaRecenteEl) receitaRecenteEl.textContent = receitaRecente.titulo;
+    
+    // Cálculo do tempo médio
+    const temposValidos = receitas
+      .map(r => parseTempoPreparo(r.tempoPreparo))
+      .filter(tempo => tempo !== null && !isNaN(tempo));
+
+    const tempoMedio = temposValidos.length > 0 
+      ? Math.round(temposValidos.reduce((a, b) => a + b, 0) / temposValidos.length)
+      : 0;
+    
+    const tempoMedioEl = document.getElementById('tempo-medio');
+    if (tempoMedioEl) tempoMedioEl.textContent = `${tempoMedio} min`;
+
+    // Categoriza as receitas (melhorado)
+    const categorias = {
+      'Doces': receitas.filter(r => r.categoria && 
+        (r.categoria.toLowerCase() === 'doce' || 
+         r.categoria.toLowerCase().includes('doce'))).length,
+      'Salgados': receitas.filter(r => r.categoria && 
+        (r.categoria.toLowerCase() === 'salgado' || 
+         r.categoria.toLowerCase().includes('salgado') ||
+         r.categoria.toLowerCase() === 'prato salgado')).length,
+      'Bebidas': receitas.filter(r => r.categoria && 
+        r.categoria.toLowerCase().includes('bebida')).length,
+      'Outros': receitas.filter(r => !r.categoria || 
+        (!r.categoria.toLowerCase().includes('doce') && 
+         !r.categoria.toLowerCase().includes('salgado') && 
+         !r.categoria.toLowerCase().includes('bebida') &&
+         r.categoria.toLowerCase() !== 'prato salgado')).length
+    };
+
+    // Tempo de preparo para o gráfico
+    const tempos = {
+      'Rápido (<30min)': receitas.filter(r => {
+        const tempo = parseTempoPreparo(r.tempoPreparo);
+        return tempo !== null && tempo < 30;
+      }).length,
+      'Médio (30-60min)': receitas.filter(r => {
+        const tempo = parseTempoPreparo(r.tempoPreparo);
+        return tempo !== null && tempo >= 30 && tempo <= 60;
+      }).length,
+      'Demorado (>60min)': receitas.filter(r => {
+        const tempo = parseTempoPreparo(r.tempoPreparo);
+        return tempo !== null && tempo > 60;
+      }).length,
+      'Não especificado': receitas.filter(r => {
+        const tempo = parseTempoPreparo(r.tempoPreparo);
+        return tempo === null;
+      }).length
+    };
+
+    // Receitas por data (últimos 6 meses)
+    const hoje = new Date();
+    const seisMesesAtras = new Date();
+    seisMesesAtras.setMonth(hoje.getMonth() - 6);
+    
+    const receitasPorMes = {};
+    for (let i = 0; i < 6; i++) {
+      const data = new Date();
+      data.setMonth(hoje.getMonth() - i);
+      const mesAno = `${data.toLocaleString('pt-BR', { month: 'short' })}/${data.getFullYear()}`;
+      receitasPorMes[mesAno] = 0;
+    }
+    
+    receitas.forEach(r => {
+      if (r.data) {
+        const dataReceita = new Date(r.data);
+        if (dataReceita >= seisMesesAtras) {
+          const mesAno = `${dataReceita.toLocaleString('pt-BR', { month: 'short' })}/${dataReceita.getFullYear()}`;
+          if (receitasPorMes[mesAno] !== undefined) {
+            receitasPorMes[mesAno]++;
+          }
+        }
+      }
+    });
+    
+    // Ordena os meses cronologicamente
+    const mesesOrdenados = Object.keys(receitasPorMes).reverse();
+
+    // Gráfico de pizza para categorias
+    const ctx1 = document.getElementById('categoriaChart');
+    if (ctx1 && Object.values(categorias).some(v => v > 0)) {
+      new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(categorias),
+          datasets: [{
+            data: Object.values(categorias),
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.8)',
+              'rgba(54, 162, 235, 0.8)',
+              'rgba(255, 206, 86, 0.8)',
+              'rgba(75, 192, 192, 0.8)'
+            ],
+            borderColor: [
+              'rgba(255, 99, 132, 1)',
+              'rgba(54, 162, 235, 1)',
+              'rgba(255, 206, 86, 1)',
+              'rgba(75, 192, 192, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: {
+                  family: 'Poppins',
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return `${label}: ${value} (${percentage}%)`;
+                }
+              }
+            }
+          },
+          cutout: '60%'
+        }
+      });
+    }
+
+    // Gráfico de barras para tempo de preparo
+    const ctx2 = document.getElementById('tempoChart');
+    if (ctx2) {
+      new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(tempos),
+          datasets: [{
+            label: 'Quantidade de Receitas',
+            data: Object.values(tempos),
+            backgroundColor: 'rgba(255, 111, 0, 0.7)',
+            borderColor: 'rgba(255, 111, 0, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+                font: {
+                  family: 'Poppins'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  family: 'Poppins'
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Gráfico de linha para receitas por data
+    const ctx3 = document.getElementById('dataChart');
+    if (ctx3) {
+      new Chart(ctx3, {
+        type: 'line',
+        data: {
+          labels: mesesOrdenados,
+          datasets: [{
+            label: 'Receitas Cadastradas',
+            data: mesesOrdenados.map(mes => receitasPorMes[mes]),
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+                font: {
+                  family: 'Poppins'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  family: 'Poppins'
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                font: {
+                  family: 'Poppins',
+                  size: 12
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Erro ao carregar estatísticas:', error);
+    const categoriaContainer = document.getElementById('categoriaChart');
+    if (categoriaContainer && categoriaContainer.parentElement) {
+      categoriaContainer.parentElement.innerHTML = 
+        '<div class="alert alert-danger text-center py-4">Erro ao carregar estatísticas. Tente recarregar a página.</div>';
+    }
+  }
+});

@@ -1,51 +1,62 @@
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('form-receita');
   const tituloForm = document.getElementById('form-title');
-  const idInput = document.getElementById('receita-id');
   
-  // Verifica se estamos editando uma receita existente
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
   
   if (id) {
     tituloForm.textContent = 'Editar Receita';
-    carregarReceitaParaEdicao(id);
+    carregarReceitaParaEdicao(parseInt(id));
   }
   
-  // Configura o envio do formulário
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-   const receita = {
-  titulo: document.getElementById('titulo').value,
-  descricao: document.getElementById('descricao').value,
-  imagem: document.getElementById('imagem').value,
-  autor: document.getElementById('autor').value,
-  data: document.getElementById('data').value,
-  conteudo: document.getElementById('conteudo').value,
-  dica: document.getElementById('dica').value || null,
-  categoria: document.getElementById('categoria').value,
-  tempoPreparo: parseInt(document.getElementById('tempoPreparo').value) || null
-};
+    const receita = {
+      titulo: document.getElementById('titulo').value,
+      descricao: document.getElementById('descricao').value,
+      imagem: document.getElementById('imagem').value,
+      autor: document.getElementById('autor').value,
+      data: document.getElementById('data').value,
+      conteudo: document.getElementById('conteudo').value,
+      dica: document.getElementById('dica').value || null,
+      categoria: document.getElementById('categoria').value,
+      tempoPreparo: parseInt(document.getElementById('tempoPreparo').value) || null
+    };
     
     if (id) {
       receita.id = parseInt(id);
-      atualizarReceita(receita);
+      await atualizarReceita(receita);
     } else {
-      cadastrarReceita(receita);
+      await cadastrarReceita(receita);
     }
   });
 });
 
-// Carrega os dados de uma receita para edição
+async function carregarReceitas() {
+  try {
+    const resposta = await fetch('docs/db/db.json');
+    if (!resposta.ok) throw new Error('Erro ao carregar receitas');
+    const data = await resposta.json();
+    return data.receitas;
+  } catch (error) {
+    const localReceitas = localStorage.getItem('receitas');
+    return localReceitas ? JSON.parse(localReceitas) : [];
+  }
+}
+
+async function salvarReceitas(receitas) {
+  localStorage.setItem('receitas', JSON.stringify(receitas));
+}
+
 async function carregarReceitaParaEdicao(id) {
   try {
-    const resposta = await fetch(`http://localhost:3001/receitas/${id}`);
-    if (!resposta.ok) throw new Error('Receita não encontrada');
+    const receitas = await carregarReceitas();
+    const receita = receitas.find(r => r.id === id);
     
-    const receita = await resposta.json();
+    if (!receita) throw new Error('Receita não encontrada');
     
-    // Preenche o formulário com os dados da receita
     document.getElementById('titulo').value = receita.titulo;
     document.getElementById('descricao').value = receita.descricao;
     document.getElementById('imagem').value = receita.imagem;
@@ -63,46 +74,33 @@ async function carregarReceitaParaEdicao(id) {
   }
 }
 
-// Cadastra uma nova receita
 async function cadastrarReceita(receita) {
   try {
-    const resposta = await fetch('http://localhost:3001/receitas', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(receita)
-    });
+    const receitas = await carregarReceitas();
+    const novoId = Math.max(...receitas.map(r => r.id), 0) + 1;
+    receita.id = novoId;
+    receitas.push(receita);
+    await salvarReceitas(receitas);
     
-    if (resposta.ok) {
-      alert('Receita cadastrada com sucesso!');
-      window.location.href = 'index.html';
-    } else {
-      throw new Error('Falha ao cadastrar receita');
-    }
+    alert('Receita cadastrada com sucesso!');
+    window.location.href = 'index.html';
   } catch (error) {
     console.error('Erro ao cadastrar receita:', error);
     alert('Erro ao cadastrar receita');
   }
 }
 
-// Atualiza uma receita existente
 async function atualizarReceita(receita) {
   try {
-    const resposta = await fetch(`http://localhost:3001/receitas/${receita.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(receita)
-    });
-    
-    if (resposta.ok) {
-      alert('Receita atualizada com sucesso!');
-      window.location.href = 'index.html';
-    } else {
-      throw new Error('Falha ao atualizar receita');
+    let receitas = await carregarReceitas();
+    const index = receitas.findIndex(r => r.id === receita.id);
+    if (index !== -1) {
+      receitas[index] = receita;
+      await salvarReceitas(receitas);
     }
+    
+    alert('Receita atualizada com sucesso!');
+    window.location.href = 'index.html';
   } catch (error) {
     console.error('Erro ao atualizar receita:', error);
     alert('Erro ao atualizar receita');

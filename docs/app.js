@@ -3,12 +3,11 @@ function criarNavbar() {
   const navbar = document.querySelector('nav.navbar');
   if (!navbar) return;
 
-  // Obtém a página atual para destacar o item ativo
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
   
   navbar.innerHTML = `
     <div class="container">
-      <a class="navbar-brand fw-bold" href="index.html">Receitas de Minas</a>
+      <a class="navbar-brand fw-bold" href="index.html">🍽️ Receitas de Minas</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -29,8 +28,35 @@ function criarNavbar() {
   `;
 }
 
-// Configuração da API
-const API_URL = 'db.json';
+// CORRIGIDO: Caminho correto para o db.json
+const DB_PATH = 'docs/db/db.json';
+
+// Carrega todas as receitas
+async function carregarReceitas() {
+  try {
+    console.log('Carregando receitas de:', DB_PATH);
+    const resposta = await fetch(DB_PATH);
+    if (!resposta.ok) throw new Error(`Erro HTTP: ${resposta.status}`);
+    const data = await resposta.json();
+    console.log('Receitas carregadas:', data.receitas.length);
+    return data.receitas;
+  } catch (error) {
+    console.error('Erro ao carregar receitas:', error);
+    // Fallback para localStorage
+    const localReceitas = localStorage.getItem('receitas');
+    if (localReceitas) {
+      console.log('Usando receitas do localStorage');
+      return JSON.parse(localReceitas);
+    }
+    return [];
+  }
+}
+
+// Salva receitas no localStorage (simulação)
+async function salvarReceitasLocal(receitas) {
+  localStorage.setItem('receitas', JSON.stringify(receitas));
+  console.log('Receitas salvas no localStorage');
+}
 
 // Obtém o ID da receita a partir da URL
 function obterIdDaUrl() {
@@ -38,25 +64,12 @@ function obterIdDaUrl() {
   return parseInt(params.get("id"));
 }
 
-async function carregarReceitas() {
-  try {
-    const resposta = await fetch('db.json');
-    if (!resposta.ok) throw new Error('Erro ao carregar receitas');
-    const data = await resposta.json();
-    return data.receitas; // Note que estamos retornando data.receitas
-  } catch (error) {
-    console.error('Erro ao carregar receitas:', error);
-    return [];
-  }
-}
-
 // Cria os cards dinamicamente na home
 async function criarCards(filtro = "") {
   const container = document.getElementById("area-cards");
-  
   if (!container) return;
   
-  container.innerHTML = ""; // Limpa os cards anteriores
+  container.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-warning" role="status"></div><p class="mt-2">Carregando receitas...</p></div>';
 
   try {
     const receitas = await carregarReceitas();
@@ -69,6 +82,7 @@ async function criarCards(filtro = "") {
       return;
     }
 
+    container.innerHTML = '';
     receitasFiltradas.forEach((item) => {
       const col = document.createElement("div");
       col.className = "col-12 col-md-6 col-lg-4 mb-4";
@@ -76,13 +90,23 @@ async function criarCards(filtro = "") {
       const card = document.createElement("div");
       card.className = "card h-100";
 
+      // Ajusta o caminho da imagem
+      let imagemPath = item.imagem;
+      if (imagemPath && !imagemPath.startsWith('http')) {
+        imagemPath = `docs/db/${imagemPath}`;
+      }
+
       card.innerHTML = `
-        <img src="${item.imagem}" alt="${item.titulo}" class="card-img-top" />
+        <img src="${imagemPath}" alt="${item.titulo}" class="card-img-top" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200?text=Imagem+Indisponível'">
         <div class="card-body d-flex flex-column">
-          <h3 class="card-title">${item.titulo}</h3>
-          <p class="card-text">${item.descricao}</p>
-          <div class="d-flex justify-content-between mt-auto">
-            <a href="detalhes.html?id=${item.id}" class="btn btn-outline-warning">Ver Receita</a>
+          <h5 class="card-title">${item.titulo}</h5>
+          <p class="card-text flex-grow-1">${item.descricao.substring(0, 100)}${item.descricao.length > 100 ? '...' : ''}</p>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <small class="text-muted">⏱️ ${item.tempoPreparo} min</small>
+            <small class="text-muted">🏷️ ${item.categoria}</small>
+          </div>
+          <div class="d-flex justify-content-between mt-3 gap-2">
+            <a href="detalhes.html?id=${item.id}" class="btn btn-outline-warning flex-grow-1">Ver Receita</a>
             <button class="btn btn-outline-danger btn-excluir" data-id="${item.id}">
               <i class="bi bi-trash"></i>
             </button>
@@ -96,108 +120,142 @@ async function criarCards(filtro = "") {
 
     // Adiciona eventos de exclusão
     document.querySelectorAll('.btn-excluir').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
         const id = parseInt(btn.getAttribute('data-id'));
-        excluirReceita(id);
+        if (confirm('Tem certeza que deseja excluir esta receita?')) {
+          const receitas = await carregarReceitas();
+          const novasReceitas = receitas.filter(r => r.id !== id);
+          await salvarReceitasLocal(novasReceitas);
+          alert('Receita excluída com sucesso!');
+          criarCards(filtro);
+        }
       });
     });
   } catch (error) {
     console.error('Erro ao criar cards:', error);
-    container.innerHTML = '<div class="col-12 text-center py-4"><p>Erro ao carregar receitas</p></div>';
+    container.innerHTML = '<div class="col-12 text-center py-4"><p class="text-danger">Erro ao carregar receitas. Verifique o console.</p></div>';
   }
 }
 
-// Mostra os detalhes da receita na página de detalhes
+// Mostra os detalhes da receita
 async function mostrarDetalhesReceita() {
   const id = obterIdDaUrl();
   const container = document.getElementById("detalhes-receita");
   
-  if (!container) return;
+  if (!container || !id) {
+    if (container && !id) {
+      container.innerHTML = "<p class='text-danger'>ID da receita não encontrado.</p>";
+    }
+    return;
+  }
   
-  container.innerHTML = "<p>Carregando receita...</p>";
+  container.innerHTML = '<div class="text-center"><div class="spinner-border text-warning" role="status"></div><p>Carregando receita...</p></div>';
 
   try {
-    const resposta = await fetch(`${API_URL}/${id}`);
-    if (!resposta.ok) throw new Error('Receita não encontrada');
-    const receita = await resposta.json();
+    const receitas = await carregarReceitas();
+    const receita = receitas.find(r => r.id === id);
 
     if (receita) {
+      // Ajusta o caminho da imagem
+      let imagemPath = receita.imagem;
+      if (imagemPath && !imagemPath.startsWith('http')) {
+        imagemPath = `docs/db/${imagemPath}`;
+      }
+
       container.innerHTML = `
-        <img src="${receita.imagem}" alt="${receita.titulo}" class="receita-img" />
-        <h1>${receita.titulo}</h1>
-        <p class="meta">Por ${receita.autor} • ${receita.data}</p>
-        <p class="conteudo">${receita.conteudo}</p>
-        ${receita.dica ? `<div class="dica"><strong>Dica:</strong> ${receita.dica}</div>` : ''}
+        <img src="${imagemPath}" alt="${receita.titulo}" class="receita-img" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 12px; margin-bottom: 20px;" onerror="this.src='https://via.placeholder.com/800x400?text=Imagem+Indisponível'">
+        <h1 class="mb-3">${receita.titulo}</h1>
+        <div class="meta mb-4 pb-2 border-bottom">
+          <span class="me-3"><i class="bi bi-person"></i> ${receita.autor}</span>
+          <span class="me-3"><i class="bi bi-calendar"></i> ${new Date(receita.data).toLocaleDateString('pt-BR')}</span>
+          <span class="me-3"><i class="bi bi-clock"></i> ${receita.tempoPreparo} minutos</span>
+          <span><i class="bi bi-tag"></i> ${receita.categoria}</span>
+        </div>
+        <div class="descricao mb-4">
+          <h3>Descrição</h3>
+          <p>${receita.descricao}</p>
+        </div>
+        <div class="conteudo mb-4">
+          <h3>Modo de Preparo</h3>
+          <p style="white-space: pre-line;">${receita.conteudo}</p>
+        </div>
+        ${receita.dica ? `
+        <div class="dica p-3 bg-light rounded">
+          <strong><i class="bi bi-lightbulb"></i> Dica:</strong> ${receita.dica}
+        </div>
+        ` : ''}
         <div class="mt-4">
-          <a href="cadastro_receitas.html?id=${receita.id}" class="btn btn-warning">Editar Receita</a>
+          <a href="cadastro_receita.html?id=${receita.id}" class="btn btn-warning">✏️ Editar Receita</a>
+          <a href="index.html" class="btn btn-outline-secondary ms-2">← Voltar</a>
         </div>
       `;
     } else {
-      container.innerHTML = "<p>Receita não encontrada.</p>";
+      container.innerHTML = "<p class='text-danger'>Receita não encontrada.</p>";
     }
   } catch (error) {
     console.error('Erro ao mostrar detalhes:', error);
-    container.innerHTML = "<p>Erro ao carregar a receita.</p>";
+    container.innerHTML = "<p class='text-danger'>Erro ao carregar a receita.</p>";
   }
 }
 
-// Exclui uma receita
-async function excluirReceita(id) {
-  if (!confirm('Tem certeza que deseja excluir esta receita?')) return;
-  
-  try {
-    const resposta = await fetch(`${API_URL}/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (resposta.ok) {
-      alert('Receita excluída com sucesso!');
-      criarCards(); // Recarrega a lista
-    } else {
-      throw new Error('Falha ao excluir receita');
-    }
-  } catch (error) {
-    console.error('Erro ao excluir receita:', error);
-    alert('Erro ao excluir receita');
-  }
-}
-
-// Cria o carrossel de destaques com receitas
+// Cria o carrossel de destaques
 async function criarCarrossel() {
   const container = document.getElementById("carousel-inner");
-  
   if (!container) return;
 
   try {
     const receitas = await carregarReceitas();
     const destaques = receitas.slice(0, 5);
 
+    container.innerHTML = '';
+    
     if (destaques.length === 0) {
-      container.innerHTML = '<div class="carousel-item active"><div class="d-block w-100 bg-light" style="height: 400px;"></div></div>';
+      container.innerHTML = '<div class="carousel-item active"><div class="d-block w-100 bg-light" style="height: 400px;"><p class="text-center pt-5">Nenhuma receita disponível</p></div></div>';
       return;
     }
 
     destaques.forEach((item, index) => {
       const activeClass = index === 0 ? "active" : "";
+      
+      let imagemPath = item.imagem;
+      if (imagemPath && !imagemPath.startsWith('http')) {
+        imagemPath = `docs/db/${imagemPath}`;
+      }
+      
       const slide = document.createElement("div");
       slide.className = `carousel-item ${activeClass}`;
       slide.innerHTML = `
-        <img src="${item.imagem}" class="d-block w-100 rounded" style="height: 400px; object-fit: cover;" alt="${item.titulo}">
+        <img src="${imagemPath}" class="d-block w-100" style="height: 400px; object-fit: cover;" alt="${item.titulo}" onerror="this.src='https://via.placeholder.com/1200x400?text=${item.titulo}'">
         <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-3">
           <h5>${item.titulo}</h5>
-          <p>${item.descricao}</p>
-          <a href="detalhes.html?id=${item.id}" class="btn btn-outline-light">Ver Receita</a>
+          <p>${item.descricao.substring(0, 100)}</p>
+          <a href="detalhes.html?id=${item.id}" class="btn btn-outline-light btn-sm">Ver Receita</a>
         </div>
       `;
       container.appendChild(slide);
     });
 
-    // Inicializa o carrossel manualmente se necessário
-    const carousel = new bootstrap.Carousel(document.getElementById('carouselReceitas'));
+    // Atualiza os indicadores do carrossel
+    const indicatorsContainer = document.getElementById("carousel-indicators");
+    if (indicatorsContainer) {
+      indicatorsContainer.innerHTML = '';
+      destaques.forEach((_, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-bs-target', '#carouselReceitas');
+        btn.setAttribute('data-bs-slide-to', index);
+        if (index === 0) btn.classList.add('active');
+        indicatorsContainer.appendChild(btn);
+      });
+    }
+
+    // Inicializa o carrossel
+    if (typeof bootstrap !== 'undefined') {
+      new bootstrap.Carousel(document.getElementById('carouselReceitas'));
+    }
   } catch (error) {
     console.error('Erro ao criar carrossel:', error);
-    container.innerHTML = '<div class="carousel-item active"><div class="d-block w-100 bg-light" style="height: 400px;"></div></div>';
   }
 }
 
@@ -205,23 +263,25 @@ async function criarCarrossel() {
 function configurarBusca() {
   const input = document.getElementById("campo-busca");
   if (input) {
-    input.addEventListener("input", () => {
-      criarCards(input.value);
+    input.addEventListener("input", (e) => {
+      criarCards(e.target.value);
     });
   }
 }
 
-// Inicializa as funções corretas com base na página
+// Inicializa
 document.addEventListener('DOMContentLoaded', function() {
-  // Cria o navbar em todas as páginas
+  console.log('DOM carregado, inicializando...');
   criarNavbar();
 
-  if (document.getElementById("area-cards")) {
+  const currentPath = window.location.pathname;
+  
+  if (currentPath.includes('index.html') || currentPath === '/' || currentPath === '/index.html') {
     criarCards();
     criarCarrossel();
     configurarBusca();
   } 
-  else if (document.getElementById("detalhes-receita")) {
+  else if (currentPath.includes('detalhes.html')) {
     mostrarDetalhesReceita();
   }
 });
